@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>מד־תור · ניהול</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root{--bg:#f2f4f8;--paper:#fff;--ink:#10203f;--muted:#5a6680;--line:#d8deea;--bad:#cf3a2b;--signal:#f2a900}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1324;--paper:#141f37;--ink:#e8edf7;--muted:#9ba7c0;--line:#26324f;--bad:#ff6b5b;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Assistant,system-ui,sans-serif}
+.wrap{max-width:1000px;margin:0 auto;padding:16px max(16px,env(safe-area-inset-right)) 40px max(16px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:14px}
+h1{margin:0;font-size:24px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{font:inherit;font-weight:700;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--ink);padding:8px 12px;cursor:pointer}
+button.pri{background:var(--signal);border-color:var(--signal);color:#10203f}
+button.del{color:var(--bad);padding:4px 8px}
+.muted{color:var(--muted);font-size:14px}
+code{font-family:"IBM Plex Mono",monospace;font-size:13px;background:var(--paper);border:1px solid var(--line);padding:2px 6px;border-radius:6px;overflow-wrap:anywhere}
+.tbl{overflow-x:auto;background:var(--paper);border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{position:sticky;top:0;background:var(--paper)}
+input{font:inherit;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>מד־תור · ניהול</h1>
+  <div class="bar" id="authBar"><button class="pri" id="login">כניסה עם Google</button></div>
+  <p class="muted" id="who"></p>
+  <div id="panel" hidden>
+    <div class="bar">
+      <input id="q" type="search" placeholder="סינון לפי יישוב או קלפי">
+      <button class="pri" id="csv">הורדת CSV</button>
+      <button id="json">הורדת JSON</button>
+      <span class="muted" id="count"></span>
+    </div>
+    <div class="tbl" style="margin-top:10px"><table><thead><tr><th>יישוב</th><th>קלפי</th><th>תור</th><th>נכנס</th><th>הצביע</th><th>המתנה</th><th>עדכון</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+  </div>
+</div>
+<script type="module">
+import { firebaseConfig } from './config.js';
+const V='10.12.2', base=`https://www.gstatic.com/firebasejs/${V}/`;
+const [{initializeApp},A,F]=await Promise.all([import(base+'firebase-app.js'),import(base+'firebase-auth.js'),import(base+'firebase-firestore.js')]);
+const app=initializeApp(firebaseConfig), auth=A.getAuth(app), db=F.getFirestore(app);
+const $=id=>document.getElementById(id);
+const t=v=>v==null?'':new Date(typeof v==='number'?v:v.toMillis()).toLocaleString('he-IL',{timeZone:'Asia/Jerusalem'});
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let rows=[];
+$('login').onclick=()=>A.signInWithPopup(auth,new A.GoogleAuthProvider()).catch(e=>$('who').textContent='הכניסה נכשלה: '+e.code);
+A.onAuthStateChanged(auth,async u=>{
+  if(!u||u.isAnonymous){ $('panel').hidden=true; return; }
+  $('authBar').innerHTML='<button id="out">יציאה</button>'; $('out').onclick=()=>A.signOut(auth).then(()=>location.reload());
+  const adm=await F.getDoc(F.doc(db,'admins',u.uid)).catch(()=>null);
+  if(!adm||!adm.exists()){
+    $('who').innerHTML=`מחובר/ת, אבל עדיין לא מנהל/ת. ב-Firebase Console ← Firestore צרו collection בשם <code>admins</code> ובתוכו מסמך שהמזהה שלו: <code>${u.uid}</code> (שדה כלשהו, למשל role = owner). אחר כך רעננו.`;
+    return;
+  }
+  $('who').textContent='מנהל/ת · '+(u.email||'');
+  $('panel').hidden=false;
+  F.onSnapshot(F.query(F.collection(db,'reports'),F.orderBy('startedAt','desc')),s=>{ rows=s.docs.map(d=>({id:d.id,...d.data()})); draw(); });
+});
+function draw(){
+  const q=$('q').value.trim(); const r=rows.filter(x=>!q||(x.city+' '+x.station+' '+x.queue).includes(q));
+  $('count').textContent=`${r.length} מתוך ${rows.length} דיווחים`;
+  $('rows').innerHTML=r.map(x=>`<tr><td>${esc(x.city)}</td><td>${esc(x.station)}</td><td>${esc(x.queue)}</td><td>${t(x.startedAt)}</td><td>${t(x.votedAt)}</td><td>${x.votedAt?Math.round((x.votedAt-x.startedAt)/60000)+' דק׳':''}</td><td>${t(x.updatedAt)}</td><td><button class="del" data-id="${esc(x.id)}">מחיקה</button></td></tr>`).join('');
+}
+$('q').oninput=draw;
+$('rows').onclick=async e=>{ const b=e.target.closest('.del'); if(!b)return;
+  if(b.dataset.armed){ await F.deleteDoc(F.doc(db,'reports',b.dataset.id)).catch(err=>alert(err.code)); }
+  else { b.dataset.armed=1; b.textContent='לאשר מחיקה?'; setTimeout(()=>{delete b.dataset.armed;b.textContent='מחיקה';},4000); } };
+function save(name,text,type){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); }
+const stamp=()=>new Date().toISOString().slice(0,16).replace(':','');
+$('csv').onclick=()=>{ const e=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+  const iso=v=>v==null?'':new Date(typeof v==='number'?v:v.toMillis()).toISOString();
+  const lines=[['id','city','lat','lng','station','queue','started_at','voted_at','wait_minutes','updated_at'].join(',')]
+    .concat(rows.map(x=>[x.id,x.city,x.lat,x.lng,x.station,x.queue,iso(x.startedAt),iso(x.votedAt),x.votedAt?Math.round((x.votedAt-x.startedAt)/60000):'',iso(x.updatedAt)].map(e).join(',')));
+  save(`madtor-${stamp()}.csv`,'﻿'+lines.join('\n'),'text/csv;charset=utf-8'); };
+$('json').onclick=()=>save(`madtor-${stamp()}.json`,JSON.stringify(rows,null,1),'application/json');
+</script>
+</body>
+</html>

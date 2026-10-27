@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>מד־תור · כמה זמן עומדים בתור לקלפי</title>
+<meta name="description" content="מפה ארצית חיה של זמני ההמתנה בתורים לקלפי. דיווח אנונימי בטאפ אחד, בלי פוליטיקה ובלי לשאול למי הצבעתם.">
+<meta property="og:title" content="מד־תור · כמה זמן עומדים בתור לקלפי?">
+<meta property="og:description" content="עומדים בתור? תמדדו. כל הארץ תראה. מפה חיה, אנונימית ובלי פוליטיקה.">
+<meta property="og:image" content="og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#10203f">
+<link rel="alternate" type="application/json" href="data.json" title="Live queue data (JSON)">
+<link rel="alternate" type="text/plain" href="llms.txt" title="Guide for AI agents">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Secular+One&family=Assistant:wght@400;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Dataset","name":"מד־תור: זמני המתנה בתורים לקלפי","alternateName":"Madtor: polling station queue wait times","description":"Crowd-sourced, anonymous, real-time reports of how long voters wait in line at Israeli polling stations. No voting preferences are collected.","license":"https://creativecommons.org/licenses/by/4.0/","isAccessibleForFree":true,"keywords":["elections","Israel","polling stations","queue","wait time","בחירות","קלפי"],"distribution":[{"@type":"DataDownload","encodingFormat":"application/json","contentUrl":"data.json"}]}
+</script>
+<style>
+/* Layout: phone-first single column; action card on top, national map, city list */
+:root{
+  --bg:#f2f4f8; --paper:#ffffff; --ink:#10203f; --muted:#5a6680; --line:#d8deea;
+  --brand:#10203f; --brand-ink:#ffffff; --signal:#f2a900; --signal-ink:#10203f;
+  --sea:#d6e4f5; --land:#f7f8fb;
+  --good:#12805c; --mid:#d48806; --bad:#cf3a2b;
+  --f-display:"Secular One","Assistant",system-ui,sans-serif;
+  --f-body:"Assistant",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0b1324; --paper:#141f37; --ink:#e8edf7; --muted:#9ba7c0; --line:#26324f;
+  --brand:#f2a900; --brand-ink:#0b1324; --signal:#f2a900; --signal-ink:#0b1324;
+  --sea:#13233f; --land:#0f182c; --good:#3fcf98; --mid:#f2b33d; --bad:#ff6b5b; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5}
+.top{background:#10203f;color:#fff;padding-top:env(safe-area-inset-top,0px)}
+.top .in{max-width:680px;margin:0 auto;padding:12px max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px));display:flex;align-items:center;justify-content:space-between;gap:12px}
+.logo{font-family:var(--f-display);font-size:26px;line-height:1;display:flex;align-items:center;gap:8px}
+.logo b{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:8px;background:#f2a900;color:#10203f;font-size:18px}
+.live{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#cfd8ea}
+.live i{width:8px;height:8px;border-radius:50%;background:#7a869f}
+.live.on i{background:#3fcf98;animation:p 1.6s infinite}
+@keyframes p{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.live.on i{animation:none}}
+.wrap{max-width:680px;margin:0 auto;padding:16px max(16px,env(safe-area-inset-right,0px)) 40px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:18px}
+.tag{font-family:var(--f-display);font-size:clamp(24px,6.4vw,34px);line-height:1.15;margin:4px 0 0;text-wrap:balance}
+.tag em{font-style:normal;background:var(--signal);color:var(--signal-ink);padding:0 6px;border-radius:4px}
+.lead{margin:6px 0 0;color:var(--muted)}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.card h2{margin:0;font-family:var(--f-display);font-weight:400;font-size:21px}
+label{display:flex;flex-direction:column;gap:4px;font-size:14px;font-weight:700}
+label small{font-weight:400;color:var(--muted)}
+input{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;width:100%;min-width:0}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:14px;font-weight:700;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:7px 12px;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.go{font:inherit;font-size:18px;font-weight:800;border:0;border-radius:12px;padding:15px;cursor:pointer;background:var(--signal);color:var(--signal-ink)}
+.go.alt{background:var(--good);color:#fff}
+.go:disabled{opacity:.55;cursor:default}
+.link{font:inherit;background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;padding:4px;align-self:center;font-size:14px}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+.err{color:var(--bad);font-size:14px;margin:0;min-height:1em}
+.timer{font-family:var(--f-num);font-weight:600;font-size:clamp(52px,16vw,76px);line-height:1;text-align:center;direction:ltr;font-variant-numeric:tabular-nums}
+.where{text-align:center;color:var(--muted);margin:0}
+.big{font-family:var(--f-display);font-size:30px;line-height:1.2;text-align:center;margin:0}
+.share{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.share a,.share button{font:inherit;font-weight:700;font-size:15px;text-decoration:none;text-align:center;border-radius:10px;padding:11px 8px;cursor:pointer;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.share .wa{background:#1fa855;border-color:#1fa855;color:#fff}
+.share .native{background:var(--ink);border-color:var(--ink);color:var(--paper);grid-column:1/-1}
+.sechead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.mapbox{position:relative;border-radius:12px;overflow:hidden;background:var(--sea);border:1px solid var(--line)}
+.mapbox svg{display:block;width:100%;height:auto;max-height:70vh}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.tip{position:absolute;inset:auto 8px 8px 8px;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px}
+ul.cities{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+ul.cities li{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:10px 0;border-top:1px solid var(--line);align-items:center}
+ul.cities li:first-child{border-top:0}
+.cname{font-weight:700;min-width:0;overflow-wrap:anywhere}
+.cmeta{font-size:13px;color:var(--muted)}
+.pill{grid-row:1/3;grid-column:2;border-radius:999px;padding:5px 11px;font-weight:800;font-size:14px;color:#fff;white-space:nowrap;font-variant-numeric:tabular-nums}
+.empty{color:var(--muted);text-align:center;padding:16px 0;margin:0}
+footer{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+footer a{color:inherit}
+</style>
+</head>
+<body>
+<div class="top"><div class="in">
+  <div class="logo"><b>⏱</b>מד־תור</div>
+  <div class="live" id="live"><i></i><span id="liveTxt">מתחבר…</span></div>
+</div></div>
+
+<main class="wrap">
+  <header>
+    <h1 class="tag">עומדים בתור? <em>תמדדו.</em> כל הארץ תראה.</h1>
+    <p class="lead">מפה חיה של זמני ההמתנה בקלפיות. אנונימי, בטאפ אחד, בלי פוליטיקה ובלי לשאול למי הצבעתם.</p>
+  </header>
+
+  <!-- state: new -->
+  <section class="card" id="sNew" aria-labelledby="hNew">
+    <h2 id="hNew">אני עומד/ת בתור עכשיו</h2>
+    <label>יישוב<input id="city" list="cityList" placeholder="התחילו להקליד…" autocomplete="off"></label>
+    <datalist id="cityList"></datalist>
+    <div class="row2">
+      <label>קלפי / מקום <small>בית ספר, מס׳ קלפי</small><input id="station" maxlength="80" placeholder="יסודי התורה" autocomplete="off"></label>
+      <label>תור <small>לא חובה</small><input id="queue" maxlength="40" placeholder="תור 2" autocomplete="off"></label>
+    </div>
+    <div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:6px">מתי נכנסתם לתור?</div>
+      <div class="chips" id="ago" role="group" aria-label="מתי נכנסתם לתור"></div>
+    </div>
+    <button class="go" id="start" type="button">הפעילו שעון ⏱</button>
+    <p class="err" id="err" role="alert"></p>
+  </section>
+
+  <!-- state: waiting -->
+  <section class="card" id="sWait" hidden aria-live="polite">
+    <p class="where" id="wWhere"></p>
+    <div class="timer" id="clock">00:00</div>
+    <button class="go alt" id="voted" type="button">הצבעתי ✓</button>
+    <button class="link" id="cancel" type="button">ביטול הדיווח</button>
+  </section>
+
+  <!-- state: done -->
+  <section class="card" id="sDone" hidden>
+    <p class="big" id="dTxt"></p>
+    <p class="where">עכשיו תורכם להעביר הלאה. כל שיתוף מביא עוד מדידה למפה.</p>
+    <div class="share" id="shareDone"></div>
+  </section>
+
+  <section class="card" aria-labelledby="hMap">
+    <div class="sechead">
+      <h2 id="hMap">המפה הארצית</h2>
+      <div class="tabs" id="views" role="group" aria-label="אזור במפה"></div>
+    </div>
+    <div class="mapbox"><svg id="map" role="img" aria-label="מפת זמני המתנה לפי יישוב"></svg><div class="tip" id="tip" hidden></div></div>
+    <div class="legend">
+      <span><i style="background:var(--good)"></i>עד 15 דק׳</span>
+      <span><i style="background:var(--mid)"></i>15–45 דק׳</span>
+      <span><i style="background:var(--bad)"></i>מעל 45 דק׳</span>
+      <span>גודל הנקודה = מספר דיווחים</span>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="hCities">
+    <h2 id="hCities">לפי יישוב · שעתיים אחרונות</h2>
+    <ul class="cities" id="cities"><li class="empty">עוד אין דיווחים. היו הראשונים במפה.</li></ul>
+  </section>
+
+  <section class="card" aria-labelledby="hShare">
+    <h2 id="hShare">תעבירו הלאה</h2>
+    <div class="share" id="shareGen"></div>
+  </section>
+
+  <footer>
+    <span>מד־תור הוא מיזם אזרחי א־מפלגתי. לא נאסף שם, טלפון, מיקום מדויק או הצבעה. רק יישוב, קלפי ושעות.</span>
+    <span>לסוכני AI ולמפתחים: <a href="llms.txt">llms.txt</a> · <a href="data.json">data.json</a> · <a href="api.html">API</a> · נתונים ברישיון CC BY 4.0</span>
+  </footer>
+</main>
+
+<script type="module">
+import { firebaseConfig } from './config.js';
+import { CITIES } from './cities.js';
+
+const $=id=>document.getElementById(id);
+const SITE=location.origin+location.pathname.replace(/index\.html$/,'');
+const H=3600e3, M=60e3;
+const byName=new Map(CITIES.map(c=>[c[0],c]));
+$('cityList').innerHTML=CITIES.map(c=>`<option value="${c[0]}">`).join('');
+
+// ---------- state ----------
+let reports=new Map();      // id -> report (ms times)
+let mine=null, uid=null, fb=null, liveSeen=false, view='all', agoMin=0;
+const params=new URLSearchParams(location.search);
+if(params.get('city')&&byName.has(params.get('city'))) $('city').value=params.get('city');
+try{ const s=JSON.parse(localStorage.getItem('madtor-form')||'{}'); if(!$('city').value&&s.city)$('city').value=s.city; if(s.station)$('station').value=s.station; }catch(e){}
+
+// "when did you join" chips
+const AGO=[0,5,10,15,30,45,60];
+$('ago').innerHTML=AGO.map(m=>`<button type="button" class="chip" data-m="${m}" aria-pressed="${m===0}">${m?m+' דק׳':'עכשיו'}</button>`).join('');
+$('ago').onclick=e=>{const b=e.target.closest('.chip'); if(!b)return; agoMin=+b.dataset.m; [...$('ago').children].forEach(c=>c.setAttribute('aria-pressed',c===b));};
+
+const fmt=m=>m<60?`${m} דק׳`:`${Math.floor(m/60)}:${String(m%60).padStart(2,'0')} שע׳`;
+const color=m=>m==null?'var(--muted)':m<15?'var(--good)':m<=45?'var(--mid)':'var(--bad)';
+const hm=t=>new Date(t).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jerusalem'});
+
+// ---------- share ----------
+function shareLinks(el,text,url){
+  const t=encodeURIComponent(text), u=encodeURIComponent(url), tu=encodeURIComponent(text+'\n'+url);
+  el.innerHTML=
+    (navigator.share?`<button class="native" type="button">שיתוף…</button>`:'')+
+    `<a class="wa" target="_blank" rel="noopener" href="https://wa.me/?text=${tu}">וואטסאפ</a>`+
+    `<a target="_blank" rel="noopener" href="https://t.me/share/url?url=${u}&text=${t}">טלגרם</a>`+
+    `<a target="_blank" rel="noopener" href="https://x.com/intent/post?text=${t}&url=${u}">X</a>`+
+    `<a target="_blank" rel="noopener" href="https://www.facebook.com/sharer/sharer.php?u=${u}">פייסבוק</a>`+
+    `<button type="button" class="copy">העתקת קישור</button>`;
+  const n=el.querySelector('.native'); if(n) n.onclick=()=>navigator.share({title:'מד־תור',text,url}).catch(()=>{});
+  const c=el.querySelector('.copy'); c.onclick=async()=>{ try{await navigator.clipboard.writeText(text+'\n'+url); c.textContent='הועתק ✓';}catch(e){ c.textContent=url; } };
+}
+shareLinks($('shareGen'),'כמה זמן עומדים היום בתור לקלפי? מפה ארצית חיה, אנונימית ובלי פוליטיקה. עומדים בתור? תמדדו 👇',SITE);
+
+// ---------- map ----------
+const VIEWS={all:['כל הארץ',29.4,33.4,34.2,35.95],center:['מרכז',31.65,32.45,34.6,35.35],north:['צפון',32.4,33.35,34.85,35.85],south:['דרום',29.4,31.75,34.2,35.5]};
+$('views').innerHTML=Object.entries(VIEWS).map(([k,v])=>`<button type="button" class="chip" data-v="${k}" aria-pressed="${k==='all'}">${v[0]}</button>`).join('');
+$('views').onclick=e=>{const b=e.target.closest('.chip'); if(!b)return; view=b.dataset.v; [...$('views').children].forEach(c=>c.setAttribute('aria-pressed',c===b)); render();};
+const COAST=[[33.4,35.19],[33.09,35.10],[33.0,35.08],[32.92,35.07],[32.85,35.07],[32.82,35.03],[32.83,34.96],[32.72,34.95],[32.5,34.89],[32.33,34.85],[32.08,34.77],[31.97,34.73],[31.8,34.64],[31.67,34.55],[31.55,34.48],[31.32,34.32],[31.25,34.2],[29.0,34.2],[29.0,33.0],[33.4,33.0]];
+const DEAD=[[31.77,35.5],[31.55,35.47],[31.35,35.40],[31.12,35.40],[31.10,35.47],[31.4,35.57],[31.77,35.58]];
+const RED=[[29.56,34.94],[29.53,35.01],[29.0,35.0],[29.0,34.85]];
+const KIN=[[32.89,35.59],[32.86,35.65],[32.80,35.65],[32.71,35.59],[32.75,35.54],[32.83,35.53]];
+const LBL=['ירושלים','תל אביב-יפו','חיפה','באר שבע','אילת','טבריה','אשדוד','נתניה','קריית שמונה'];
+
+function stats(){
+  const now=Date.now(), by=new Map();
+  for(const r of reports.values()){
+    const t=r.votedAt||now; if(t<now-2*H) continue;
+    let s=by.get(r.city); if(!s){ s={city:r.city,lat:r.lat,lng:r.lng,done:[],open:[],last:0}; by.set(r.city,s); }
+    if(r.votedAt) s.done.push(Math.round((r.votedAt-r.startedAt)/M)); else s.open.push(Math.round((now-r.startedAt)/M));
+    s.last=Math.max(s.last,r.votedAt||r.startedAt);
+  }
+  for(const s of by.values()){
+    const arr=(s.done.length?s.done:s.open).slice().sort((a,b)=>a-b);
+    s.wait=arr.length?arr[Math.floor(arr.length/2)]:null; s.n=s.done.length+s.open.length;
+  }
+  return [...by.values()].sort((a,b)=>b.last-a.last);
+}
+
+function render(){
+  const [,la0,la1,lo0,lo1]=VIEWS[view], k=Math.cos(31.5*Math.PI/180);
+  const W=(lo1-lo0)*k*1000, Ht=(la1-la0)*1000, pad=W*0.02;
+  const X=lo=>((lo-lo0)*k*1000), Y=la=>((la1-la)*1000);
+  const poly=(pts,f)=>`<polygon points="${pts.map(([a,o])=>X(o).toFixed(1)+','+Y(a).toFixed(1)).join(' ')}" fill="${f}"/>`;
+  const S=stats(), u=W/340; // SVG units per CSS px at phone width
+  let g=`<rect x="0" y="0" width="${W}" height="${Ht}" fill="var(--land)"/>`+poly(COAST,'var(--sea)')+poly(DEAD,'var(--sea)')+poly(RED,'var(--sea)')+poly(KIN,'var(--sea)');
+  g+=S.map((s,i)=>{const r=(6+Math.sqrt(s.n)*3)*u;
+    return `<circle data-i="${i}" cx="${X(s.lng)}" cy="${Y(s.lat)}" r="${r}" fill="${color(s.wait)}" fill-opacity=".85" stroke="var(--paper)" stroke-width="${1.5*u}" style="cursor:pointer"/>`;}).join('');
+  g+=LBL.map(n=>{const c=byName.get(n); return `<circle cx="${X(c[2])}" cy="${Y(c[1])}" r="${2*u}" fill="var(--muted)"/><text x="${X(c[2])-6*u}" y="${Y(c[1])+4*u}" font-size="${11*u}" fill="var(--muted)" font-family="Assistant,sans-serif" text-anchor="start" paint-order="stroke" stroke="var(--land)" stroke-width="${3*u}">${n}</text>`;}).join('');
+  const svg=$('map'); svg.setAttribute('viewBox',`0 0 ${W.toFixed(0)} ${Ht.toFixed(0)}`); svg.innerHTML=g;
+  svg.onclick=e=>{const i=e.target.dataset&&e.target.dataset.i; const tip=$('tip'); if(i==null){tip.hidden=true;return;} const s=S[+i];
+    tip.hidden=false; tip.textContent=`${s.city}: ${s.wait!=null?'בערך '+fmt(s.wait):'—'} · ${s.n} דיווחים · עדכון ${hm(s.last)}`;};
+  // list
+  const ul=$('cities');
+  ul.innerHTML=S.length?S.map(s=>`<li><span class="cname">${esc(s.city)}</span><span class="pill" style="background:${color(s.wait)}">${s.wait!=null?fmt(s.wait):'—'}</span><span class="cmeta">${s.n} דיווחים · ${s.open.length} עדיין בתור · עדכון ${hm(s.last)}</span></li>`).join('')
+    :'<li class="empty">עוד אין דיווחים. היו הראשונים במפה.</li>';
+  const today=[...reports.values()].filter(r=>r.startedAt>Date.now()-18*H).length;
+  if(fb) $('liveTxt').textContent=`LIVE · ${today} דיווחים היום`;
+}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+setInterval(()=>{render(); tick();},30000);
+
+// ---------- own report states ----------
+function showState(){
+  $('sNew').hidden=!!mine; $('sWait').hidden=!(mine&&!mine.votedAt); $('sDone').hidden=!(mine&&mine.votedAt);
+  if(mine&&!mine.votedAt){ $('wWhere').textContent=[mine.city,mine.station,mine.queue].filter(Boolean).join(' · ')+` · מאז ${hm(mine.startedAt)}`; tick(); }
+  if(mine&&mine.votedAt){
+    const w=Math.round((mine.votedAt-mine.startedAt)/M);
+    $('dTxt').textContent=`עמדת ${fmt(w)} בתור. תודה!`;
+    shareLinks($('shareDone'),`עמדתי ${fmt(w)} בתור לקלפי ב${mine.city}. כמה זמן אצלכם? תמדדו גם ותראו את המפה הארצית 👇`,SITE+'?city='+encodeURIComponent(mine.city));
+  }
+}
+let clockT=null;
+function tick(){ if(!(mine&&!mine.votedAt))return; const s=Math.max(0,Math.floor((Date.now()-mine.startedAt)/1000));
+  const h=Math.floor(s/3600), m=Math.floor(s%3600/60), x=s%60; $('clock').textContent=(h?h+':':'')+String(m).padStart(2,'0')+':'+String(x).padStart(2,'0'); }
+setInterval(tick,1000);
+
+// ---------- data ----------
+function ingest(id,d){
+  const ms=v=>v==null?null:typeof v==='number'?v:v.toMillis?v.toMillis():Date.parse(v);
+  reports.set(id,{city:d.city,lat:d.lat,lng:d.lng,station:d.station,queue:d.queue,startedAt:ms(d.startedAt??d.started_at),votedAt:ms(d.votedAt??d.voted_at)});
+}
+fetch('data.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{ if(j&&j.reports){ if(!fb||!liveSeen){ j.reports.forEach(r=>ingest('j:'+r.id,r)); render(); } } }).catch(()=>{});
+render();
+
+const ready=firebaseConfig.apiKey&&!firebaseConfig.apiKey.startsWith('PASTE');
+if(!ready){ $('liveTxt').textContent='מצב הדגמה'; }
+else{
+  const V='10.12.2', base=`https://www.gstatic.com/firebasejs/${V}/`;
+  const [{initializeApp},A,F]=await Promise.all([import(base+'firebase-app.js'),import(base+'firebase-auth.js'),import(base+'firebase-firestore.js')]);
+  const app=initializeApp(firebaseConfig), auth=A.getAuth(app), db=F.getFirestore(app);
+  fb={db,F};
+  F.onSnapshot(F.query(F.collection(db,'reports'),F.where('startedAt','>',Date.now()-18*H),F.orderBy('startedAt','desc'),F.limit(1500)),snap=>{
+    if(!liveSeen){ liveSeen=true; for(const k of [...reports.keys()]) if(k.startsWith('j:')) reports.delete(k); }
+    snap.docChanges().forEach(c=>{ if(c.type==='removed') reports.delete(c.doc.id); else ingest(c.doc.id,c.doc.data()); });
+    $('live').classList.add('on'); render();
+  },()=>{ $('live').classList.remove('on'); $('liveTxt').textContent='החיבור נותק, רעננו'; });
+  A.onAuthStateChanged(auth,async u=>{
+    if(!u){ A.signInAnonymously(auth).catch(()=>{$('err').textContent='לא הצלחנו להתחבר. בדקו את החיבור ונסו שוב.';}); return; }
+    uid=u.uid; const s=await F.getDoc(F.doc(db,'reports',uid)).catch(()=>null);
+    if(s&&s.exists()){ ingest(uid,s.data()); mine=reports.get(uid); if(mine.startedAt<Date.now()-18*H) mine=null; }
+    showState();
+  });
+}
+
+$('start').onclick=async()=>{
+  const city=$('city').value.trim(), c=byName.get(city), station=$('station').value.trim(), queue=$('queue').value.trim();
+  $('err').textContent='';
+  if(!c){ $('err').textContent='בחרו יישוב מהרשימה. היישוב שלכם לא שם? בחרו את הקרוב אליו.'; $('city').focus(); return; }
+  try{ localStorage.setItem('madtor-form',JSON.stringify({city,station})); }catch(e){}
+  const startedAt=Date.now()-agoMin*M;
+  if(!fb||!uid){ mine={city,lat:c[1],lng:c[2],station,queue,startedAt,votedAt:null}; reports.set('local',mine); showState(); render(); return; }
+  $('start').disabled=true;
+  try{
+    await fb.F.setDoc(fb.F.doc(fb.db,'reports',uid),{city,lat:c[1],lng:c[2],station,queue,startedAt,votedAt:null,updatedAt:fb.F.serverTimestamp()});
+    mine={city,lat:c[1],lng:c[2],station,queue,startedAt,votedAt:null}; showState();
+  }catch(e){ $('err').textContent='השליחה נכשלה. נסו שוב בעוד רגע.'; }
+  finally{ $('start').disabled=false; }
+};
+$('voted').onclick=async()=>{
+  const votedAt=Date.now(); $('voted').disabled=true;
+  try{ if(fb&&uid) await fb.F.updateDoc(fb.F.doc(fb.db,'reports',uid),{votedAt,updatedAt:fb.F.serverTimestamp()}); mine.votedAt=votedAt; showState(); render(); }
+  catch(e){ $('voted').textContent='לא נשמר, נסו שוב'; }
+  finally{ $('voted').disabled=false; }
+};
+$('cancel').onclick=async()=>{
+  try{ if(fb&&uid) await fb.F.deleteDoc(fb.F.doc(fb.db,'reports',uid)); }catch(e){}
+  reports.delete(uid||'local'); mine=null; showState(); render();
+};
+</script>
+</body>
+</html>

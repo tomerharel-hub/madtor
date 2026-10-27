@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Admins: create a document /admins/<your uid> by hand in the Firebase console.
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function validReport(d) {
+      let now = request.time.toMillis();
+      return d.keys().hasOnly(['city','lat','lng','station','queue','startedAt','votedAt','updatedAt'])
+        && d.city is string && d.city.size() > 0 && d.city.size() <= 40
+        && d.lat is number && d.lat > 29.3 && d.lat < 33.5
+        && d.lng is number && d.lng > 34.1 && d.lng < 36.0
+        && d.station is string && d.station.size() <= 80
+        && d.queue is string && d.queue.size() <= 40
+        && d.startedAt is int
+        && d.startedAt > now - 18 * 3600000
+        && d.startedAt <= now + 300000
+        && (d.votedAt == null
+            || (d.votedAt is int && d.votedAt >= d.startedAt && d.votedAt <= now + 300000))
+        && d.updatedAt == request.time;
+    }
+
+    // One report per anonymous visitor; the document id is their auth uid.
+    match /reports/{uid} {
+      allow read: if true;
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && validReport(request.resource.data);
+      allow delete: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+    }
+
+    match /admins/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+  }
+}
