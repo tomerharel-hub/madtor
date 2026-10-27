@@ -38,7 +38,7 @@ input{font:inherit;padding:8px;border-radius:8px;border:1px solid var(--line);ba
       <button id="json">הורדת JSON</button>
       <span class="muted" id="count"></span>
     </div>
-    <div class="tbl" style="margin-top:10px"><table><thead><tr><th>יישוב</th><th>קלפי</th><th>תור</th><th>נכנס</th><th>הצביע</th><th>המתנה</th><th>עדכון</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+    <div class="tbl" style="margin-top:10px"><table><thead><tr><th>יישוב</th><th>קלפי</th><th>תור</th><th>נגישה</th><th>נכנס</th><th>הצביע</th><th>המתנה</th><th>עדכון</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
   </div>
 </div>
 <script type="module">
@@ -66,7 +66,7 @@ A.onAuthStateChanged(auth,async u=>{
 function draw(){
   const q=$('q').value.trim(); const r=rows.filter(x=>!q||(x.city+' '+x.station+' '+x.queue).includes(q));
   $('count').textContent=`${r.length} מתוך ${rows.length} דיווחים`;
-  $('rows').innerHTML=r.map(x=>`<tr><td>${esc(x.city)}</td><td>${esc(x.station)}</td><td>${esc(x.queue)}</td><td>${t(x.startedAt)}</td><td>${t(x.votedAt)}</td><td>${x.votedAt?Math.round((x.votedAt-x.startedAt)/60000)+' דק׳':''}</td><td>${t(x.updatedAt)}</td><td><button class="del" data-id="${esc(x.id)}">מחיקה</button></td></tr>`).join('');
+  $('rows').innerHTML=r.map(x=>`<tr><td>${esc(x.city)}</td><td>${esc(x.station)}</td><td>${esc(x.queue)}</td><td>${x.accessible?'✓':''}</td><td>${t(x.startedAt)}</td><td>${t(x.votedAt)}</td><td>${x.votedAt?Math.round((x.votedAt-x.startedAt)/60000)+' דק׳':''}</td><td>${t(x.updatedAt)}</td><td><button class="del" data-id="${esc(x.id)}">מחיקה</button></td></tr>`).join('');
 }
 $('q').oninput=draw;
 $('rows').onclick=async e=>{ const b=e.target.closest('.del'); if(!b)return;
@@ -76,8 +76,8 @@ function save(name,text,type){ const a=document.createElement('a'); a.href=URL.c
 const stamp=()=>new Date().toISOString().slice(0,16).replace(':','');
 $('csv').onclick=()=>{ const e=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
   const iso=v=>v==null?'':new Date(typeof v==='number'?v:v.toMillis()).toISOString();
-  const lines=[['id','city','lat','lng','station','queue','started_at','voted_at','wait_minutes','updated_at'].join(',')]
-    .concat(rows.map(x=>[x.id,x.city,x.lat,x.lng,x.station,x.queue,iso(x.startedAt),iso(x.votedAt),x.votedAt?Math.round((x.votedAt-x.startedAt)/60000):'',iso(x.updatedAt)].map(e).join(',')));
+  const lines=[['id','city','lat','lng','station','queue','accessible','started_at','voted_at','wait_minutes','updated_at'].join(',')]
+    .concat(rows.map(x=>[x.id,x.city,x.lat,x.lng,x.station,x.queue,x.accessible?1:0,iso(x.startedAt),iso(x.votedAt),x.votedAt?Math.round((x.votedAt-x.startedAt)/60000):'',iso(x.updatedAt)].map(e).join(',')));
   save(`madtor-${stamp()}.csv`,'﻿'+lines.join('\n'),'text/csv;charset=utf-8'); };
 $('json').onclick=()=>save(`madtor-${stamp()}.json`,JSON.stringify(rows,null,1),'application/json');
 </script>

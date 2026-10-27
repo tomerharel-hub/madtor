@@ -10,12 +10,13 @@ service cloud.firestore {
 
     function validReport(d) {
       let now = request.time.toMillis();
-      return d.keys().hasOnly(['city','lat','lng','station','queue','startedAt','votedAt','updatedAt'])
+      return d.keys().hasOnly(['city','lat','lng','station','queue','accessible','startedAt','votedAt','updatedAt'])
         && d.city is string && d.city.size() > 0 && d.city.size() <= 40
         && d.lat is number && d.lat > 29.3 && d.lat < 33.5
         && d.lng is number && d.lng > 34.1 && d.lng < 36.0
         && d.station is string && d.station.size() <= 80
         && d.queue is string && d.queue.size() <= 40
+        && (!('accessible' in d) || d.accessible is bool)
         && d.startedAt is int
         && d.startedAt > now - 18 * 3600000
         && d.startedAt <= now + 300000

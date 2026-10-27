@@ -113,6 +113,7 @@ footer a{color:inherit}
       <label>קלפי / מקום <small>בית ספר, מס׳ קלפי</small><input id="station" maxlength="80" placeholder="יסודי התורה" autocomplete="off"></label>
       <label>תור <small>לא חובה</small><input id="queue" maxlength="40" placeholder="תור 2" autocomplete="off"></label>
     </div>
+    <label style="flex-direction:row;align-items:center;gap:8px;font-weight:600"><input id="acc" type="checkbox" style="width:20px;height:20px">קלפי נגישה <small>(בדרך כלל איטית יותר)</small></label>
     <div>
       <div style="font-size:14px;font-weight:700;margin-bottom:6px">מתי נכנסתם לתור?</div>
       <div class="chips" id="ago" role="group" aria-label="מתי נכנסתם לתור"></div>
@@ -258,7 +259,7 @@ setInterval(()=>{render(); tick();},30000);
 // ---------- own report states ----------
 function showState(){
   $('sNew').hidden=!!mine; $('sWait').hidden=!(mine&&!mine.votedAt); $('sDone').hidden=!(mine&&mine.votedAt);
-  if(mine&&!mine.votedAt){ $('wWhere').textContent=[mine.city,mine.station,mine.queue].filter(Boolean).join(' · ')+` · מאז ${hm(mine.startedAt)}`; tick(); }
+  if(mine&&!mine.votedAt){ $('wWhere').textContent=[mine.city,mine.station,mine.queue,mine.accessible?'נגישה':''].filter(Boolean).join(' · ')+` · מאז ${hm(mine.startedAt)}`; tick(); }
   if(mine&&mine.votedAt){
     const w=Math.round((mine.votedAt-mine.startedAt)/M);
     $('dTxt').textContent=`עמדת ${fmt(w)} בתור. תודה!`;
@@ -273,7 +274,7 @@ setInterval(tick,1000);
 // ---------- data ----------
 function ingest(id,d){
   const ms=v=>v==null?null:typeof v==='number'?v:v.toMillis?v.toMillis():Date.parse(v);
-  reports.set(id,{city:d.city,lat:d.lat,lng:d.lng,station:d.station,queue:d.queue,startedAt:ms(d.startedAt??d.started_at),votedAt:ms(d.votedAt??d.voted_at)});
+  reports.set(id,{accessible:!!d.accessible,city:d.city,lat:d.lat,lng:d.lng,station:d.station,queue:d.queue,startedAt:ms(d.startedAt??d.started_at),votedAt:ms(d.votedAt??d.voted_at)});
 }
 fetch('data.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{ if(j&&j.reports){ if(!fb||!liveSeen){ j.reports.forEach(r=>ingest('j:'+r.id,r)); render(); } } }).catch(()=>{});
 render();
@@ -299,16 +300,16 @@ else{
 }
 
 $('start').onclick=async()=>{
-  const city=$('city').value.trim(), c=byName.get(city), station=$('station').value.trim(), queue=$('queue').value.trim();
+  const city=$('city').value.trim(), c=byName.get(city), station=$('station').value.trim(), queue=$('queue').value.trim(), accessible=$('acc').checked;
   $('err').textContent='';
   if(!c){ $('err').textContent='בחרו יישוב מהרשימה. היישוב שלכם לא שם? בחרו את הקרוב אליו.'; $('city').focus(); return; }
   try{ localStorage.setItem('madtor-form',JSON.stringify({city,station})); }catch(e){}
   const startedAt=Date.now()-agoMin*M;
-  if(!fb||!uid){ mine={city,lat:c[1],lng:c[2],station,queue,startedAt,votedAt:null}; reports.set('local',mine); showState(); render(); return; }
+  if(!fb||!uid){ mine={city,lat:c[1],lng:c[2],station,queue,accessible,startedAt,votedAt:null}; reports.set('local',mine); showState(); render(); return; }
   $('start').disabled=true;
   try{
-    await fb.F.setDoc(fb.F.doc(fb.db,'reports',uid),{city,lat:c[1],lng:c[2],station,queue,startedAt,votedAt:null,updatedAt:fb.F.serverTimestamp()});
-    mine={city,lat:c[1],lng:c[2],station,queue,startedAt,votedAt:null}; showState();
+    await fb.F.setDoc(fb.F.doc(fb.db,'reports',uid),{city,lat:c[1],lng:c[2],station,queue,accessible,startedAt,votedAt:null,updatedAt:fb.F.serverTimestamp()});
+    mine={city,lat:c[1],lng:c[2],station,queue,accessible,startedAt,votedAt:null}; showState();
   }catch(e){ $('err').textContent='השליחה נכשלה. נסו שוב בעוד רגע.'; }
   finally{ $('start').disabled=false; }
 };
